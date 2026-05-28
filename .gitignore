@@ -1,0 +1,15 @@
+# Raster data
+*.tif
+*.tiff
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
