@@ -17,29 +17,174 @@ BUHI is not directly validated against building morphology because SAR heterogen
 
 ## Data
 
-### SAR indices
+### Study AOI
 
-SAR-derived indices were generated from Sentinel-1 VV backscatter:
+The validation area was defined from the Sentinel-1 scene used in the study.
+
+Input raster:
+
+```text
+/home/gray/tendra/data/raw/2015_of_S1A_IW_GRDH_1SDV_20150701T221702_20150701T221737_006623_008D5B_5E02_Orb_Cal_Spk_TC.tif
+```
+
+Raster metadata:
+
+```text
+Sensor/product: Sentinel-1A IW GRDH
+Acquisition time: 2015-07-01 22:17 UTC
+CRS: EPSG:4326 / WGS84
+Pixel size: ~0.00008983 degrees, approximately 10 m
+Raster size: 5657 × 4445 pixels
+Bands: 2 Float32 bands
+```
+
+AOI bounds:
+
+```text
+Longitude: 110.5955 to 111.1037 E
+Latitude:  -7.7546 to  -7.3553 S
+```
+
+The same AOI was transformed to EPSG:3857 for processing the GlobalBuildingAtlas building data:
+
+```text
+min_x = 12311434.744
+min_y = -865885.695
+max_x = 12368007.309
+max_y = -821046.490
+```
+
+### SAR-derived indices
+
+The SAR-derived validation inputs were generated from Sentinel-1 VV backscatter:
 
 ```text
 BUII: Built-Up Intensity Index
 SBI: Sprawl Balance Index / harmonic index
 ```
 
-Both were aggregated to the same 310 m grid used by the framework.
+BUII represents normalized local backscatter intensity. SBI is the harmonic index combining stretched BUII and stretched BUHI, designed to be high where both built-up intensity and heterogeneity are present.
+
+For validation, the SAR index rasters were clipped to the AOI and resampled to EPSG:3857. They were then aggregated from 10 m to 310 m using average resampling.
+
+Processed SAR files:
+
+```text
+/home/gray/tendra/data/processed/buii_2025_aoi_3857_10m.tif
+/home/gray/tendra/data/processed/sbi_2025_aoi_3857_10m.tif
+/home/gray/tendra/data/processed/buii_2025_aoi_310m.tif
+/home/gray/tendra/data/processed/sbi_2025_aoi_310m.tif
+```
 
 ### External reference
 
-GlobalBuildingAtlas building footprints were used as an independent external reference dataset.
+GlobalBuildingAtlas building footprints were used as an independent external reference dataset. The required 5° × 5° tile was selected based on the Sentinel-1 AOI:
+
+```text
+GBA tile: e110_s05_e115_s10
+Region folder: oceania
+```
+
+Input GBA files:
+
+```text
+/home/gray/tendra/GBA_tiles/oceania/e110_s05_e115_s10.geojson
+/home/gray/tendra/GBA_tiles/Polygon/oceania/e110_s05_e115_s10.geojson
+```
+
+The first file corresponds to ODbL polygons and the second file corresponds to additional GBA.LoD1 polygons.
 
 The building data were clipped to the Sentinel-1 AOI and rasterized to a 10 m building mask. The mask was then aggregated to 310 m to calculate building-based reference metrics.
 
-AOI:
+Clipped building outputs:
 
 ```text
-Longitude: 110.5955 to 111.1037 E
-Latitude:  -7.7546 to  -7.3553 S
+/home/gray/tendra/data/processed/gba_part1_odbl_aoi.gpkg
+/home/gray/tendra/data/processed/gba_part2_lod1_polygon_aoi.gpkg
+/home/gray/tendra/data/processed/gba_buildings_aoi_merged.gpkg
+/home/gray/tendra/data/processed/gba_buildings_aoi_2015_s1.gpkg
 ```
+
+Feature counts after AOI clipping:
+
+```text
+Part I clipped: 523,867 buildings
+Part II clipped: 2,035,740 buildings
+Merged AOI dataset: 2,559,607 buildings
+```
+
+The merged AOI building dataset was stored as a GeoPackage in EPSG:3857:
+
+```text
+Geometry type: MultiPolygon
+CRS: EPSG:3857 / WGS 84 Pseudo-Mercator
+Feature count: 2,559,607
+```
+
+### Building reference metrics
+
+The building polygons were converted into a 10 m binary building mask:
+
+```text
+building pixel = 1
+non-building pixel = 0
+```
+
+The 10 m mask was then aggregated to 310 m using average resampling. The resulting value is interpreted as the building footprint ratio:
+
+```text
+building_footprint_ratio = mean(building_mask_10m) within each 310 m cell
+```
+
+The built/non-built mixing index was then calculated from the footprint ratio:
+
+```text
+p = building_footprint_ratio
+built_nonbuilt_mixing_index = 4 * p * (1 - p)
+```
+
+Reference metric rasters:
+
+```text
+/home/gray/tendra/data/processed/gba_building_mask_aoi_3857_10m.tif
+/home/gray/tendra/data/processed/building_footprint_ratio_310m.tif
+/home/gray/tendra/data/processed/built_nonbuilt_mixing_index_310m.tif
+```
+
+### Validation table
+
+The final validation table contains one record per 310 m grid cell:
+
+```text
+/home/gray/tendra/data/processed/validation_table_310m.csv
+```
+
+Number of valid grid cells:
+
+```text
+n = 26,208
+```
+
+Main fields:
+
+```text
+x, y
+buii
+sbi
+footprint_ratio
+mixing_index
+```
+
+Summary statistics:
+
+| Variable | Mean | Median | Min | Max |
+|---|---:|---:|---:|---:|
+| BUII | 0.263 | 0.221 | 0.021 | 1.000 |
+| SBI | 0.233 | 0.192 | 0.000 | 1.000 |
+| Building footprint ratio | 0.102 | 0.070 | 0.000 | 0.755 |
+| Built/non-built mixing index | 0.320 | 0.259 | 0.000 | 1.000 |
+
+The validation is therefore based on comparable 310 m grid-level measurements from SAR-derived indices and GlobalBuildingAtlas-derived building metrics.
 
 ---
 
