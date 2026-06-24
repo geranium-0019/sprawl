@@ -298,6 +298,82 @@ The strong positive correlation supports the interpretation of SBI as a proxy fo
 
 ---
 
+## Window-Size Sensitivity
+
+To evaluate whether the selected 31 × 31 pixel window is reasonable, the validation was repeated using five odd-numbered moving windows:
+
+```text
+5 × 5 pixels = approximately 50 m
+11 × 11 pixels = approximately 110 m
+21 × 21 pixels = approximately 210 m
+31 × 31 pixels = approximately 310 m baseline
+41 × 41 pixels = approximately 410 m
+```
+
+Odd-numbered windows were used so that each moving window has a clear center pixel. The 5 × 5 and 11 × 11 windows were included to test very local behavior, while 21 × 21, 31 × 31, and 41 × 41 represent nearby block-to-neighborhood scales around the baseline.
+
+### Validation performance
+
+| Window | Approx. scale | BUII vs footprint ratio | SBI vs mixing index |
+|---:|---:|---:|---:|
+| 5 × 5 | 50 m | 0.771 | 0.799 |
+| 11 × 11 | 110 m | 0.768 | 0.793 |
+| 21 × 21 | 210 m | 0.762 | 0.784 |
+| 31 × 31 | 310 m | 0.749 | 0.773 |
+| 41 × 41 | 410 m | 0.727 | 0.752 |
+
+All correlations are Spearman r values with p < 0.001 and n = 26,390 grid cells.
+
+The smallest windows give the highest validation correlations. This is expected because the external reference metrics are derived directly from building footprints, so very local SAR windows are more tightly aligned with local building coverage. However, the purpose of the framework is not to maximize building-footprint correlation at the most local scale. The goal is to represent block-to-neighborhood morphology and reduce sensitivity to individual buildings, small local patches, and pixel-scale SAR texture.
+
+### Map consistency between windows
+
+| Metric | Window pair | Spearman r |
+|---|---|---:|
+| BUII | 5 vs 11 | 0.996 |
+| BUII | 5 vs 31 | 0.958 |
+| BUII | 11 vs 31 | 0.972 |
+| BUII | 21 vs 31 | 0.992 |
+| BUII | 31 vs 41 | 0.991 |
+| BUII | 21 vs 41 | 0.969 |
+| SBI | 5 vs 11 | 0.988 |
+| SBI | 5 vs 31 | 0.921 |
+| SBI | 11 vs 31 | 0.956 |
+| SBI | 21 vs 31 | 0.989 |
+| SBI | 31 vs 41 | 0.990 |
+| SBI | 21 vs 41 | 0.962 |
+
+The very high map-to-map correlations show that the main spatial patterns are robust across nearby window sizes.
+
+### Interpretation
+
+The 31 × 31 window is not selected because it maximizes the validation correlation. The highest correlations occur at 5 × 5 and 11 × 11 because these windows are closer to individual building and parcel scales. Those windows are useful as a local-scale check, but they are less appropriate for the stated objective of capturing neighborhood-scale morphology.
+
+The 31 × 31 window is selected as a balanced neighborhood-scale window. It preserves strong validation relationships with building morphology, remains highly consistent with nearby windows, and avoids excessive sensitivity to very local texture. The larger 41 × 41 window smooths the maps more strongly and slightly weakens the validation relationships. The 31 × 31 window therefore provides a practical compromise between local morphological detail and spatial robustness.
+
+### Literature-based justification for 31 × 31
+
+The 31 × 31 pixel window also has a practical connection to existing LCZ-style remote-sensing work. At Sentinel-1's 10 m spatial resolution, 31 × 31 pixels correspond to approximately:
+
+```text
+31 × 10 m = 310 m
+```
+
+This is close to the 320 m × 320 m Sentinel-1/Sentinel-2 patch scale used in the So2Sat LCZ42 benchmark for Local Climate Zone classification. LCZ-based remote-sensing studies use this type of patch scale to represent local urban morphology, compactness, and built-form characteristics rather than individual buildings.
+
+A 32 × 32 pixel window would match 320 m exactly, but it is an even-sized moving window and therefore does not have a single center pixel. For moving-window raster computation, an odd-sized kernel is preferable because each output pixel corresponds to a clearly centered local neighborhood.
+
+Therefore, the 31 × 31 window can be interpreted as the centered moving-window approximation of the established 320 m LCZ-style local morphology scale:
+
+```text
+So2Sat LCZ42 patch scale: 320 m × 320 m
+This study: 31 × 31 pixels ≈ 310 m × 310 m
+```
+
+This supports the use of 31 × 31 as a block-to-neighborhood scale window rather than an arbitrary parameter choice.
+
+---
+
 ## Output files
 
 ```text
@@ -305,6 +381,9 @@ The strong positive correlation supports the interpretation of SBI as a proxy fo
 /home/gray/tendra/outputs/validation/correlation_table.csv
 /home/gray/tendra/outputs/validation/scatter_buii_footprint_ratio.png
 /home/gray/tendra/outputs/validation/scatter_sbi_mixing_index.png
+/home/gray/tendra/outputs/window_sensitivity/window_validation_comparison.csv
+/home/gray/tendra/outputs/window_sensitivity/window_map_correlations.csv
+/home/gray/tendra/outputs/window_sensitivity/window_validation_comparison.png
 ```
 
 ## Important note
